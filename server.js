@@ -39,7 +39,8 @@ app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        memory: memoryData
+        memory: memoryData,
+        port: process.env.PORT || 3000
     });
 });
 
@@ -111,28 +112,27 @@ io.on('connection', (socket) => {
     });
 });
 
-// Configure port properly for Render
-const PORT = process.env.PORT || 10000;
+// Ensure we're using the port Render provides
+const port = process.env.PORT || 3000;
 
-// Start server with better error handling
-const server = http.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
+// Log the port we're trying to use
+console.log('Attempting to start server on port:', port);
+
+// Start the server
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is running on port ${port}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
     console.log('Memory usage:', {
         heapUsed: formatMemoryUsage(used.heapUsed),
         heapTotal: formatMemoryUsage(used.heapTotal)
     });
-}).on('error', (err) => {
-    console.error('Server failed to start:', err);
-    console.error('Port:', PORT);
+}).on('error', (error) => {
+    console.error('Failed to start server:', error);
     process.exit(1);
 });
 
 // Handle process termination
 process.on('SIGTERM', () => {
     console.log('SIGTERM received. Shutting down gracefully...');
-    server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
-    });
+    process.exit(0);
 });
