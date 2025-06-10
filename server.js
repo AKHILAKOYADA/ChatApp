@@ -4,15 +4,24 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
     cors: {
         origin: process.env.NODE_ENV === 'production' 
-            ? ['https://chatapp-6riz.onrender.com'] 
-            : "*",
+            ? process.env.CORS_ORIGIN || '*'
+            : 'http://localhost:3000',
         methods: ["GET", "POST"],
         credentials: true
     }
 });
 
+// Memory usage monitoring
+const used = process.memoryUsage();
+const formatMemoryUsage = (data) => `${Math.round(data / 1024 / 1024 * 100) / 100} MB`;
+
 // Serve static files from the current directory
 app.use(express.static(__dirname));
+
+// Root route for basic check
+app.get('/', (req, res) => {
+    res.send('Chat server is running');
+});
 
 // Basic error handling
 app.use((err, req, res, next) => {
@@ -20,23 +29,37 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-// Health check endpoint for Render
+// Enhanced health check endpoint for Render
 app.get('/health', (req, res) => {
-    res.status(200).send('OK');
+    const memoryData = {
+        heapUsed: formatMemoryUsage(used.heapUsed),
+        heapTotal: formatMemoryUsage(used.heapTotal)
+    };
+    
+    res.status(200).json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        memory: memoryData
+    });
 });
 
-// Store connected users
+// Store connected users (with a maximum limit for free tier)
+const MAX_USERS = 20;
 const users = new Set();
-
-// Keep track of user connections
 const userConnections = new Map();
 
 io.on('connection', (socket) => {
     console.log('A user connected');
 
+    // Check if maximum user limit is reached
+    if (users.size >= MAX_USERS) {
+        socket.emit('error', 'Server is at maximum capacity');
+        socket.disconnect(true);
+        return;
+    }
+
     // Handle user join
     socket.on('user join', (username) => {
-        // Check if username is already taken
         if (users.has(username)) {
             socket.emit('error', 'Username already taken');
             return;
@@ -47,7 +70,6 @@ io.on('connection', (socket) => {
         userConnections.set(socket.id, username);
         io.emit('user list', Array.from(users));
         
-        // Broadcast welcome message
         io.emit('chat message', {
             text: `${username} joined the chat`,
             username: 'System',
@@ -73,7 +95,6 @@ io.on('connection', (socket) => {
             userConnections.delete(socket.id);
             io.emit('user list', Array.from(users));
             
-            // Broadcast disconnect message
             io.emit('chat message', {
                 text: `${socket.username} left the chat`,
                 username: 'System',
@@ -83,13 +104,32 @@ io.on('connection', (socket) => {
         console.log('A user disconnected');
     });
 
-    // Handle errors
+    // Enhanced error handling
     socket.on('error', (error) => {
         console.error('Socket error:', error);
+        socket.emit('error', 'An error occurred');
     });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => {
+
+// Start server with better error handling
+const server = http.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log('Memory usage:', {
+        heapUsed: formatMemoryUsage(used.heapUsed),
+        heapTotal: formatMemoryUsage(used.heapTotal)
+    });
+}).on('error', (err) => {
+    console.error('Server failed to start:', err);
+    process.exit(1);
+});
+
+// Handle process termination
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received. Shutting down gracefully...');
+    server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+    });
 });
