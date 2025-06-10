@@ -4,7 +4,7 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
     cors: {
         origin: process.env.NODE_ENV === 'production' 
-            ? ['https://your-app-name.onrender.com'] 
+            ? ['https://chatapp-6riz.onrender.com'] 
             : "*",
         methods: ["GET", "POST"],
         credentials: true
