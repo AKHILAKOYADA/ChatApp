@@ -111,17 +111,20 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+// Configure port properly for Render
+const PORT = process.env.PORT || 10000;
 
 // Start server with better error handling
-const server = http.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+const server = http.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running at http://localhost:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV}`);
     console.log('Memory usage:', {
         heapUsed: formatMemoryUsage(used.heapUsed),
         heapTotal: formatMemoryUsage(used.heapTotal)
     });
 }).on('error', (err) => {
     console.error('Server failed to start:', err);
+    console.error('Port:', PORT);
     process.exit(1);
 });
 
