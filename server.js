@@ -3,8 +3,11 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
     cors: {
-        origin: process.env.NODE_ENV === 'production' ? false : "*",
-        methods: ["GET", "POST"]
+        origin: process.env.NODE_ENV === 'production' 
+            ? ['https://your-app-name.onrender.com'] 
+            : "*",
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
@@ -15,6 +18,11 @@ app.use(express.static(__dirname));
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Something broke!');
+});
+
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
 });
 
 // Store connected users
