@@ -52,14 +52,12 @@ const userConnections = new Map();
 io.on('connection', (socket) => {
     console.log('A user connected');
 
-    // Check if maximum user limit is reached
     if (users.size >= MAX_USERS) {
         socket.emit('error', 'Server is at maximum capacity');
         socket.disconnect(true);
         return;
     }
 
-    // Handle user join
     socket.on('user join', (username) => {
         if (users.has(username)) {
             socket.emit('error', 'Username already taken');
@@ -70,7 +68,6 @@ io.on('connection', (socket) => {
         users.add(username);
         userConnections.set(socket.id, username);
         io.emit('user list', Array.from(users));
-        
         io.emit('chat message', {
             text: `${username} joined the chat`,
             username: 'System',
@@ -78,10 +75,8 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Handle chat messages
     socket.on('chat message', (data) => {
         if (!socket.username) return;
-
         io.emit('chat message', {
             text: data.text,
             username: socket.username,
@@ -89,13 +84,11 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Handle disconnection
     socket.on('disconnect', () => {
         if (socket.username) {
             users.delete(socket.username);
             userConnections.delete(socket.id);
             io.emit('user list', Array.from(users));
-            
             io.emit('chat message', {
                 text: `${socket.username} left the chat`,
                 username: 'System',
@@ -105,7 +98,6 @@ io.on('connection', (socket) => {
         console.log('A user disconnected');
     });
 
-    // Enhanced error handling
     socket.on('error', (error) => {
         console.error('Socket error:', error);
         socket.emit('error', 'An error occurred');
@@ -115,11 +107,10 @@ io.on('connection', (socket) => {
 // Ensure we're using the port Render provides
 const port = process.env.PORT || 3000;
 
-// Log the port we're trying to use
 console.log('Attempting to start server on port:', port);
 
-// Start the server
-app.listen(port, '0.0.0.0', () => {
+// Start the HTTP server
+http.listen(port, '0.0.0.0', () => {
     console.log(`Server is running on port ${port}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
     console.log('Memory usage:', {
